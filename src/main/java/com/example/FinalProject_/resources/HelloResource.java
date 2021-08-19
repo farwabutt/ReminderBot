@@ -1,5 +1,9 @@
 package com.example.FinalProject_.resources;
 
+import com.amazonaws.client.builder.AwsClientBuilder;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDB;
 import com.example.FinalProject_.domain.Data;
 import com.google.gson.Gson;
 
@@ -22,19 +26,21 @@ public class HelloResource {
     @Path("/remind-me")
     public Response PostJson(String payload) throws Exception {
         final Data d = new Gson().fromJson(payload, Data.class);
-        if(Validate(d.getMessage(), d.getMinutes_from_now(),d.getSlack_handle())){
+        if(Validate(d.getMessage(), d.getMinutes_from_now(),d.getSlack_handle()))
             return Response.noContent().build();
-        }
         else
             return Response.ok("Null fields or Incorrect Input!").build();
         // System.out.println(d.toString());
     }
     public boolean Validate(String m, int t,String h){
         boolean flag=true;
-        if (m==null || t==0 || h==null )
+        if (m=="" || m==null || t==0 || h=="" || h==null )
             flag=false;
-        else if(m.getClass().getSimpleName()!="String" || ((Object)t).getClass().getSimpleName()!="Integer" || h.getClass().getSimpleName()!="String")
-            flag=false;
+     ////  else if(m.getClass().getSimpleName()!="String" || ((Object)t).getClass().getSimpleName()!="Integer" || h.getClass().getSimpleName()!="String")
+          // flag=false;
         return flag;
-    }
+
+}
+
+
 }
