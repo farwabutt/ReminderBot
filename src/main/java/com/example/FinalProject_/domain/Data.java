@@ -3,18 +3,15 @@ package com.example.FinalProject_.domain;
 import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.document.DynamoDB;
-import com.amazonaws.services.dynamodbv2.document.Item;
-import com.amazonaws.services.dynamodbv2.document.PutItemOutcome;
-import com.amazonaws.services.dynamodbv2.document.Table;
+import com.amazonaws.services.dynamodbv2.document.*;
+import com.amazonaws.services.dynamodbv2.document.spec.DeleteItemSpec;
+import com.amazonaws.services.dynamodbv2.document.spec.UpdateItemSpec;
+import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
 import com.amazonaws.services.dynamodbv2.model.*;
 import com.google.gson.annotations.SerializedName;
 import org.joda.time.DateTime;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class Data {
@@ -38,14 +35,19 @@ static String tableName = "record";
         this.message = message;
     }
 
-    public int getMinutes_from_now() {
-        return minutes_from_now;
+    public Date getMinutes_from_now() {
+
+        Calendar date = Calendar.getInstance();
+       // System.out.println("Current Date and TIme : " + date.getTime());
+        long timeInSecs = date.getTimeInMillis();
+        Date new_time = new Date(timeInSecs + (minutes_from_now * 60 * 1000));
+       // System.out.println("After adding mins to current time : " + new_time);
+        return new_time;
     }
 
     public void setMinutes_from_now(int minutes_from_now) {
         this.minutes_from_now =minutes_from_now ;
     }
-    // System.currentTimeMillis()+ TimeUnit.MINUTES.toMillis(minutes_from_now)
 
     public String getSlack_handle() {
         return slack_handle;
@@ -55,8 +57,7 @@ static String tableName = "record";
         this.slack_handle = slack_handle;
     }
 
-
-
+    ////-----------------------------DYNAMO ---------------------
     public void createTable(){
 
         try {
@@ -73,7 +74,7 @@ static String tableName = "record";
             Table table = dynamoDB.createTable(request);
             System.out.println("Waiting for " + tableName + " to be created...this may take a while...");
             table.waitForActive();
-           insertion();
+           //insertion();
 
         }
         catch (Exception e) {
@@ -81,37 +82,42 @@ static String tableName = "record";
             System.err.println(e.getMessage());
         }    }
 
-public void insertion(){
+    public void insertion(){
     Table table = dynamoDB.getTable(tableName);
-    DateTime t=  new DateTime(getMinutes_from_now());
+    //DateTime t=  new DateTime(getMinutes_from_now());
+        Date t= getMinutes_from_now();
     String message = getMessage();
     String handle=getSlack_handle();
-    String status="";
-    final HashMap<String,String> infoMap= new HashMap<String,String>();
-
+    String status="pending";
+    final HashMap<String,Object> infoMap= new HashMap<String,Object>();
+   infoMap.put("status", status);
     try {
         System.out.println("Adding a new item...");
         PutItemOutcome outcome = table
-                .putItem(new Item().withPrimaryKey("message", message, "status",status).withMap("info", infoMap));
+                .putItem(new Item().withPrimaryKey("message", message, "time",t).withMap("info", infoMap));
 
         System.out.println("PutItem succeeded:\n" + outcome.getPutItemResult());
 
     }
     catch (Exception e) {
-        System.err.println("Unable to add item: " + message + " " + status);
+        System.err.println("Unable to add item: " + message + " and " + t);
         System.err.println(e.getMessage());
     }
         }
-
-    public static void updateExampleTable() {
-
+        public  void updateTable() {
         Table table = dynamoDB.getTable(tableName);
-        System.out.println("Modifying provisioned throughput for " + tableName);
-
+            Date t= getMinutes_from_now();
+            String message = getMessage();
+        //System.out.println("Modifying provisioned throughput for " + tableName);
+            UpdateItemSpec updateItemSpec = new UpdateItemSpec().withPrimaryKey("message", message, "time", t)
+                    .withUpdateExpression("set info.status = :s")
+                    .withValueMap(new ValueMap().withString(":s", "failed"));
+                    //.withReturnValues(ReturnValue.UPDATED_NEW);
         try {
-            table.updateTable(new ProvisionedThroughput().withReadCapacityUnits(6L).withWriteCapacityUnits(7L));
-
-            table.waitForActive();
+           // table.updateTable(new ProvisionedThroughput().withReadCapacityUnits(6L).withWriteCapacityUnits(7L));
+            UpdateItemOutcome outcome = table.updateItem(updateItemSpec);
+            //table.waitForActive();
+            System.out.println("UpdateItem succeeded:\n" + outcome.getItem().toJSONPretty());
         }
         catch (Exception e) {
             System.err.println("UpdateTable request failed for " + tableName);
@@ -119,16 +125,18 @@ public void insertion(){
         }
     }
 
-    public static void deleteExampleTable() {
+    public void deleteRecord() {
 
         Table table = dynamoDB.getTable(tableName);
+        Date t= getMinutes_from_now();
+        String message = getMessage();
+        DeleteItemSpec deleteItemSpec = new DeleteItemSpec()
+                .withPrimaryKey(new PrimaryKey("message", message, "time", t)).withValueMap(new ValueMap().withString("status", "pending"));
         try {
-            System.out.println("Issuing DeleteTable request for " + tableName);
-            table.delete();
-
+            System.out.println("Issuing Delete record request for " + tableName);
+           // table.delete();
             System.out.println("Waiting for " + tableName + " to be deleted...this may take a while...");
-
-            table.waitForDelete();
+//            table.waitForDelete();
         }
         catch (Exception e) {
             System.err.println("DeleteTable request failed for " + tableName);

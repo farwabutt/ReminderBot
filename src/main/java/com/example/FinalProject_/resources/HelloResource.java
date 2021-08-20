@@ -12,6 +12,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
+import java.util.Date;
 
 @Path("/my-reminder-app")
 public class HelloResource {
@@ -26,15 +27,18 @@ public class HelloResource {
     @Path("/remind-me")
     public Response PostJson(String payload) throws Exception {
         final Data d = new Gson().fromJson(payload, Data.class);
-        if(Validate(d.getMessage(), d.getMinutes_from_now(),d.getSlack_handle()))
+        //d.createTable();
+        if(Validate(d.getMessage(), d.getMinutes_from_now(),d.getSlack_handle())){
+        d.insertion();
             return Response.noContent().build();
+        }
         else
             return Response.ok("Null fields or Incorrect Input!").build();
         // System.out.println(d.toString());
     }
-    public boolean Validate(String m, int t,String h){
+    public boolean Validate(String m, Date t, String h){
         boolean flag=true;
-        if (m=="" || m==null || t==0 || h=="" || h==null )
+        if (m=="" || m==null || t==null || h=="" || h==null )
             flag=false;
      ////  else if(m.getClass().getSimpleName()!="String" || ((Object)t).getClass().getSimpleName()!="Integer" || h.getClass().getSimpleName()!="String")
           // flag=false;
