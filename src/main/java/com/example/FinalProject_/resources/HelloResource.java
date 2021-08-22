@@ -29,7 +29,9 @@ public class HelloResource {
         final Data d = new Gson().fromJson(payload, Data.class);
         //d.createTable();
         if(Validate(d.getMessage(), d.getMinutes_from_now(),d.getSlack_handle())){
-        d.insertion();
+             //d.insertion();
+
+
             return Response.noContent().build();
         }
         else

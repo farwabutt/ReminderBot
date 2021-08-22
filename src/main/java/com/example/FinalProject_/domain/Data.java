@@ -19,7 +19,7 @@ public class Data {
             .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration("http://localhost:4566", "us-west-2"))
             .build();
     static DynamoDB dynamoDB = new DynamoDB(client);
-static String tableName = "record";
+static String tableName = "project_record";
     @SerializedName("message")
     private String message;
     @SerializedName("minutes_from_now")
@@ -61,19 +61,16 @@ static String tableName = "record";
     public void createTable(){
 
         try {
-
-            List<AttributeDefinition> attributeDefinitions = new ArrayList<AttributeDefinition>();
-            attributeDefinitions.add(new AttributeDefinition().withAttributeName("Id").withAttributeType("N"));
-            List<KeySchemaElement> keySchema = new ArrayList<KeySchemaElement>();
-            keySchema.add(new KeySchemaElement().withAttributeName("Id").withKeyType(KeyType.HASH));
-
-            CreateTableRequest request = new CreateTableRequest().withTableName(tableName).withKeySchema(keySchema)
-                    .withAttributeDefinitions(attributeDefinitions).withProvisionedThroughput(
-                            new ProvisionedThroughput().withReadCapacityUnits(5L).withWriteCapacityUnits(6L));
-            System.out.println("Issuing CreateTable request for " + tableName);
-            Table table = dynamoDB.createTable(request);
-            System.out.println("Waiting for " + tableName + " to be created...this may take a while...");
+            System.out.println("Attempting to create table; please wait...");
+            Table table = dynamoDB.createTable(tableName,
+                    Arrays.asList(new KeySchemaElement("year", KeyType.HASH), // Partition
+                            new KeySchemaElement("title", KeyType.RANGE)), // Sort key
+                    Arrays.asList(new AttributeDefinition("year", ScalarAttributeType.N),
+                            new AttributeDefinition("title", ScalarAttributeType.S)),
+                    new ProvisionedThroughput(10L, 10L));
             table.waitForActive();
+            System.out.println("Success.  Table status: " + table.getDescription().getTableStatus());
+
            //insertion();
 
         }
@@ -84,62 +81,66 @@ static String tableName = "record";
 
     public void insertion(){
     Table table = dynamoDB.getTable(tableName);
-    //DateTime t=  new DateTime(getMinutes_from_now());
-        Date t= getMinutes_from_now();
-    String message = getMessage();
-    String handle=getSlack_handle();
-    String status="pending";
-    final HashMap<String,Object> infoMap= new HashMap<String,Object>();
-   infoMap.put("status", status);
-    try {
-        System.out.println("Adding a new item...");
-        PutItemOutcome outcome = table
-                .putItem(new Item().withPrimaryKey("message", message, "time",t).withMap("info", infoMap));
+        int year = 2021;
+        String title = "Reminder Bot Record";
 
-        System.out.println("PutItem succeeded:\n" + outcome.getPutItemResult());
+        final Map<String, Object> infoMap = new HashMap<String, Object>();
+        infoMap.put("message", getMessage());
+        infoMap.put("stat","pending");
+        infoMap.put("timer",getMinutes_from_now().toString());
 
-    }
-    catch (Exception e) {
-        System.err.println("Unable to add item: " + message + " and " + t);
-        System.err.println(e.getMessage());
-    }
-        }
-        public  void updateTable() {
-        Table table = dynamoDB.getTable(tableName);
-            Date t= getMinutes_from_now();
-            String message = getMessage();
-        //System.out.println("Modifying provisioned throughput for " + tableName);
-            UpdateItemSpec updateItemSpec = new UpdateItemSpec().withPrimaryKey("message", message, "time", t)
-                    .withUpdateExpression("set info.status = :s")
-                    .withValueMap(new ValueMap().withString(":s", "failed"));
-                    //.withReturnValues(ReturnValue.UPDATED_NEW);
         try {
-           // table.updateTable(new ProvisionedThroughput().withReadCapacityUnits(6L).withWriteCapacityUnits(7L));
-            UpdateItemOutcome outcome = table.updateItem(updateItemSpec);
-            //table.waitForActive();
-            System.out.println("UpdateItem succeeded:\n" + outcome.getItem().toJSONPretty());
+            System.out.println("Adding a new item...");
+            PutItemOutcome outcome = table
+                    .putItem(new Item().withPrimaryKey("year", year, "title", title).withMap("info", infoMap));
+
+            System.out.println("PutItem succeeded:\n" + outcome.getPutItemResult());
+
         }
         catch (Exception e) {
-            System.err.println("UpdateTable request failed for " + tableName);
+            System.err.println("Unable to add item: " + year + " " + title);
             System.err.println(e.getMessage());
         }
+
+        }
+
+        public  void updateRecord() {
+        Table table = dynamoDB.getTable(tableName);
+            int year = 2021;
+            String title = "Reminder Bot Record";
+
+            UpdateItemSpec updateItemSpec = new UpdateItemSpec().withPrimaryKey("year", year, "title", title)
+                    .withUpdateExpression("set info.stat=:s")
+                    .withValueMap(new ValueMap().withString(":s", "failed")).withReturnValues(ReturnValue.UPDATED_NEW);
+            try {
+                System.out.println("Updating the item...");
+                UpdateItemOutcome outcome = table.updateItem(updateItemSpec);
+                System.out.println("UpdateItem succeeded:\n" + outcome.getItem().toJSONPretty());
+
+            }
+            catch (Exception e) {
+                System.err.println("Unable to update item: " + year + " " + title);
+                System.err.println(e.getMessage());
+            }
     }
 
     public void deleteRecord() {
 
         Table table = dynamoDB.getTable(tableName);
-        Date t= getMinutes_from_now();
-        String message = getMessage();
+        int year = 2021;
+        String title = "Reminder Bot Record";
+
         DeleteItemSpec deleteItemSpec = new DeleteItemSpec()
-                .withPrimaryKey(new PrimaryKey("message", message, "time", t)).withValueMap(new ValueMap().withString("status", "pending"));
+               .withPrimaryKey(new PrimaryKey("year", year, "title", title)).withConditionExpression("info.stat <= :s").withValueMap(new ValueMap().withString(":s", "pending"));
+
+
         try {
-            System.out.println("Issuing Delete record request for " + tableName);
-           // table.delete();
-            System.out.println("Waiting for " + tableName + " to be deleted...this may take a while...");
-//            table.waitForDelete();
+            System.out.println("Attempting a conditional delete...");
+            table.deleteItem(deleteItemSpec);
+            System.out.println("DeleteItem succeeded");
         }
         catch (Exception e) {
-            System.err.println("DeleteTable request failed for " + tableName);
+            System.err.println("Unable to delete item: " + year + " " + title);
             System.err.println(e.getMessage());
         }
     }
