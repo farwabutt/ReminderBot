@@ -7,6 +7,8 @@ import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDB;
 import com.example.FinalProject_.domain.CronJobEvent;
 import com.example.FinalProject_.domain.Data;
 import com.google.gson.Gson;
+import com.slack.api.Slack;
+import com.slack.api.methods.response.api.ApiTestResponse;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -32,10 +34,13 @@ public class HelloResource {
         final Data d = new Gson().fromJson(payload, Data.class);
         Timer timer= new Timer();
         TimerTask task=new CronJobEvent();
+        Slack slack = Slack.getInstance();
         //d.createTable();
         if(Validate(d.getMessage(), d.getMinutes_from_now(),d.getSlack_handle())){
              //d.insertion();
-             timer.schedule(task,d.getMinutes_from_now());
+            timer.schedule(task,d.getMinutes_from_now());
+           // ApiTestResponse response = slack.methods().apiTest(r -> r.foo("bar"));
+            //System.out.println(response);
             return Response.ok("You will receive the reminder at "+ d.getMinutes_from_now()).build();
         }
         else
