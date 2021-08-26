@@ -67,7 +67,7 @@ static String tableName = "project_record";
                             new KeySchemaElement("title", KeyType.RANGE)), // Sort key
                     Arrays.asList(new AttributeDefinition("year", ScalarAttributeType.N),
                             new AttributeDefinition("title", ScalarAttributeType.S)),
-                    new ProvisionedThroughput(10L, 10L));
+                    new ProvisionedThroughput(100L, 100L));
             table.waitForActive();
             System.out.println("Success.  Table status: " + table.getDescription().getTableStatus());
 
