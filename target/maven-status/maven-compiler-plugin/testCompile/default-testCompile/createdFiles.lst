@@ -1,0 +1,4 @@
+com\example\FinalProject_\domain\DataTest.class
+com\example\FinalProject_\domain\SlackUtilsTest.class
+com\example\FinalProject_\domain\CronJobEventTest.class
+com\example\FinalProject_\resources\HelloResourceTest.class
